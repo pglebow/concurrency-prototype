@@ -1,0 +1,15 @@
+apply plugin: 'java'
+
+repositories {
+    jcenter()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile('org.projectlombok:lombok:1.16.4')
+    compile('com.google.guava:guava:19.0')    
+
+    testCompile 'junit:junit:4.12'
+}
