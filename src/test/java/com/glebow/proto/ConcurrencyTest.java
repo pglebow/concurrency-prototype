@@ -3,7 +3,9 @@
  */
 package com.glebow.proto;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -26,9 +28,17 @@ public class ConcurrencyTest {
     private CountDownLatch latch;
     private LinkedList<String> hosts = Lists.newLinkedList();
     private int workersPerHost = 4;
+    private int numberOfTasks = 2001;
+
+    private List<String> toProcess;
 
     @Test
     public void test() throws InterruptedException {
+
+        toProcess = new ArrayList<>(numberOfTasks);
+        for (int i = 0; i < numberOfTasks; i++) {
+            toProcess.add(String.valueOf(i));
+        }
 
         hosts.add("One");
         hosts.add("Two");
@@ -48,22 +58,26 @@ public class ConcurrencyTest {
             executors.add(MoreExecutors.listeningDecorator(e));
         });
 
+        List<List<String>> partitionedTasks = Lists.partition(toProcess, (toProcess.size() / workersPerHost));
         for (int i = 0; i < hosts.size(); i++) {
             ListeningExecutorService e = executors.get(i);
             for (int j = 0; j < workersPerHost; j++) {
-                Futures.addCallback(e.submit(new Task(String.valueOf(j))), new FutureCallback<Result>() {
+                List<String> tasks = partitionedTasks.get(j);
 
-                    @Override
-                    public void onSuccess(Result result) {
-                        System.out.println("Success: " + result.toString());
+                tasks.forEach(t -> {
+                    System.out.println("Creating task " + t);
+                    Futures.addCallback(e.submit(new Task(t)), new FutureCallback<Result>() {
 
-                    }
+                        @Override
+                        public void onSuccess(Result result) {
+                            System.out.println("Success: " + result.toString());
+                        }
 
-                    @Override
-                    public void onFailure(Throwable t) {
-                        System.out.println("Failure: " + t.getMessage());
-
-                    }
+                        @Override
+                        public void onFailure(Throwable t) {
+                            System.out.println("Failure: " + t.getMessage());
+                        }
+                    });
                 });
             }
             e.shutdown();
