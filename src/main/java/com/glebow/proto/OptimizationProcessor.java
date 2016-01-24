@@ -33,13 +33,13 @@ import lombok.extern.slf4j.Slf4j;
  *
  */
 @Slf4j
-public class OptimizationProcessor<H extends Comparable<H>> {
+public class OptimizationProcessor<H extends Comparable<H>, R extends Callable<Result>> {
 
     @NotNull
     protected Collection<H> hosts;
 
     @NotNull
-    protected Collection<Task> tasks;
+    protected Collection<R> tasks;
 
     @NotNull
     protected int workersPerHost;
@@ -54,7 +54,7 @@ public class OptimizationProcessor<H extends Comparable<H>> {
      * @param workersPerHost
      * @param numberOfTasks
      */
-    public OptimizationProcessor(Collection<H> hosts, int workersPerHost, Collection<Task> tasks) {
+    public OptimizationProcessor(Collection<H> hosts, int workersPerHost, Collection<R> tasks) {
         this.hosts = hosts;
         this.workersPerHost = workersPerHost;
         this.tasks = tasks;
@@ -76,11 +76,11 @@ public class OptimizationProcessor<H extends Comparable<H>> {
 
         @Override
         public Duration call() throws Exception {
-            SetMultimap<H, Task> tasksForHost = buildSetMultimap();
+            SetMultimap<H, R> tasksForHost = buildSetMultimap();
 
             CountDownLatch latch = new CountDownLatch(tasksForHost.keySet().size());
 
-            for (Map.Entry<H, Collection<Task>> e : tasksForHost.asMap().entrySet()) {
+            for (Map.Entry<H, Collection<R>> e : tasksForHost.asMap().entrySet()) {
                 H host = e.getKey();
 
                 ThreadFactoryBuilder b = new ThreadFactoryBuilder();
@@ -92,7 +92,7 @@ public class OptimizationProcessor<H extends Comparable<H>> {
 
                 ListeningExecutorService les = MoreExecutors.listeningDecorator(executor);
 
-                for (Task task : e.getValue()) {
+                for (R task : e.getValue()) {
                     Futures.addCallback(les.submit(task), new FutureCallback<Result>() {
 
                         @Override
@@ -120,8 +120,8 @@ public class OptimizationProcessor<H extends Comparable<H>> {
      * 
      * @return SetMultimap<H, T>
      */
-    private SetMultimap<H, Task> buildSetMultimap() {
-        SetMultimap<H, Task> tasksForHost;
+    private SetMultimap<H, R> buildSetMultimap() {
+        SetMultimap<H, R> tasksForHost;
 
         tasksForHost = HashMultimap.create(hosts.size(),
                 (tasks.size() / workersPerHost) + (tasks.size() % workersPerHost));

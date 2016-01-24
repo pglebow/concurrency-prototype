@@ -34,7 +34,7 @@ public class ConcurrencyTest {
                 tasks.add(new Task(String.valueOf(i)));
             }
 
-            OptimizationProcessor<String> p = new OptimizationProcessor<String>(hosts, workersPerHost, tasks);
+            OptimizationProcessor<String, Task> p = new OptimizationProcessor<String, Task>(hosts, workersPerHost, tasks);
             Duration d = p.process().get();
             log.info("Duration: " + d);
         } catch (Exception e) {
