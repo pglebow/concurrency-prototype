@@ -24,9 +24,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.sun.istack.internal.NotNull;
 
 import lombok.AllArgsConstructor;
+import lombok.NonNull;
 
 /**
  * @author pglebow <H> The type of the host object <R> The result type of the
@@ -34,13 +34,12 @@ import lombok.AllArgsConstructor;
  */
 public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callable<R>> {
 
-    @NotNull
+    @NonNull
     protected Collection<H> hosts;
 
-    @NotNull
+    @NonNull
     protected Collection<T> tasks;
 
-    @NotNull
     protected int workersPerHost;
 
     protected FutureCallback<R> callback;
@@ -48,7 +47,7 @@ public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callabl
     protected Executor callBackExecutor;
 
     /** Executor for the overall process */
-    protected ListeningExecutorService pool = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
+    protected ListeningExecutorService pool;
 
     /**
      * Constructor
@@ -58,7 +57,7 @@ public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callabl
      * @param numberOfTasks
      * @param callback
      *            an optional callback to be executed when each task completes
-     * @param e
+     * @param callBackExecutor
      *            an optional executor that will execute the callback
      */
     public OptimizationProcessor(Collection<H> hosts, int workersPerHost, Collection<T> tasks,
@@ -68,6 +67,7 @@ public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callabl
         this.tasks = tasks;
         this.callback = callback;
         this.callBackExecutor = callBackExecutor;
+        this.pool = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
     }
 
     /**
@@ -95,8 +95,8 @@ public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callabl
 
                 ThreadFactoryBuilder b = new ThreadFactoryBuilder();
                 b.setNameFormat(host + "-worker-%d");
-                NamedLatchedThreadPoolExecutor executor = new NamedLatchedThreadPoolExecutor(workersPerHost, workersPerHost, 0L,
-                        TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), b.build());
+                NamedLatchedThreadPoolExecutor executor = new NamedLatchedThreadPoolExecutor(workersPerHost,
+                        workersPerHost, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), b.build());
                 executor.setName(host.toString());
                 executor.setLatch(latch);
 
