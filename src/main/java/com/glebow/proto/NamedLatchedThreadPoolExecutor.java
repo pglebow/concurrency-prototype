@@ -85,6 +85,7 @@ public class NamedLatchedThreadPoolExecutor extends ThreadPoolExecutor {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
         super.afterExecute(r, t);
