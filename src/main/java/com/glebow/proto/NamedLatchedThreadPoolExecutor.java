@@ -17,13 +17,13 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Adds metadata to the thread pool executor
+ * Adds metadata to the thread pool executor and a Countdown latch
  * 
  * @author pglebow
  *
  */
 @Slf4j
-public class NamedThreadPoolExecutor extends ThreadPoolExecutor {
+public class NamedLatchedThreadPoolExecutor extends ThreadPoolExecutor {
 
     @Getter
     @Setter
@@ -40,7 +40,7 @@ public class NamedThreadPoolExecutor extends ThreadPoolExecutor {
      * @param unit
      * @param workQueue
      */
-    public NamedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
+    public NamedLatchedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
             BlockingQueue<Runnable> workQueue) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
     }
@@ -53,7 +53,7 @@ public class NamedThreadPoolExecutor extends ThreadPoolExecutor {
      * @param workQueue
      * @param threadFactory
      */
-    public NamedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
+    public NamedLatchedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
             BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
     }
@@ -66,7 +66,7 @@ public class NamedThreadPoolExecutor extends ThreadPoolExecutor {
      * @param workQueue
      * @param handler
      */
-    public NamedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
+    public NamedLatchedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
             BlockingQueue<Runnable> workQueue, RejectedExecutionHandler handler) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, handler);
     }
@@ -80,26 +80,26 @@ public class NamedThreadPoolExecutor extends ThreadPoolExecutor {
      * @param threadFactory
      * @param handler
      */
-    public NamedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
+    public NamedLatchedThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
             BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory, RejectedExecutionHandler handler) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
     }
 
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
-        super.afterExecute(r, t);        
+        super.afterExecute(r, t);
         try {
-            AbstractFuture<Result> f = (AbstractFuture<Result>)r;
-            log.info(this.name + ": After execute " + f.get().getMessage());
+            AbstractFuture<Result> f = (AbstractFuture<Result>) r;
+            log.debug(this.name + ": After execute " + f.get().getMessage());
         } catch (Exception e) {
-            log.error(e.getMessage(), e);
+            log.debug(e.getMessage(), e);
         }
     }
 
     @Override
     protected void terminated() {
         super.terminated();
-        log.info(this.getName() + " has terminated");
+        log.debug(this.getName() + " has terminated");
         latch.countDown();
     }
 

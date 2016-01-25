@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -26,23 +27,25 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.sun.istack.internal.NotNull;
 
 import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 /**
- * @author pglebow
- *
+ * @author pglebow <H> The type of the host object <R> The result type of the
+ *         task type T <T> The type implementing Callable<T>
  */
-@Slf4j
-public class OptimizationProcessor<H extends Comparable<H>, R extends Callable<Result>> {
+public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callable<R>> {
 
     @NotNull
     protected Collection<H> hosts;
 
     @NotNull
-    protected Collection<R> tasks;
+    protected Collection<T> tasks;
 
     @NotNull
     protected int workersPerHost;
+
+    protected FutureCallback<R> callback;
+
+    protected Executor callBackExecutor;
 
     /** Executor for the overall process */
     protected ListeningExecutorService pool = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
@@ -53,11 +56,18 @@ public class OptimizationProcessor<H extends Comparable<H>, R extends Callable<R
      * @param hosts
      * @param workersPerHost
      * @param numberOfTasks
+     * @param callback
+     *            an optional callback to be executed when each task completes
+     * @param e
+     *            an optional executor that will execute the callback
      */
-    public OptimizationProcessor(Collection<H> hosts, int workersPerHost, Collection<R> tasks) {
+    public OptimizationProcessor(Collection<H> hosts, int workersPerHost, Collection<T> tasks,
+            FutureCallback<R> callback, Executor callBackExecutor) {
         this.hosts = hosts;
         this.workersPerHost = workersPerHost;
         this.tasks = tasks;
+        this.callback = callback;
+        this.callBackExecutor = callBackExecutor;
     }
 
     /**
@@ -76,35 +86,28 @@ public class OptimizationProcessor<H extends Comparable<H>, R extends Callable<R
 
         @Override
         public Duration call() throws Exception {
-            SetMultimap<H, R> tasksForHost = buildSetMultimap();
+            SetMultimap<H, T> tasksForHost = buildSetMultimap();
 
             CountDownLatch latch = new CountDownLatch(tasksForHost.keySet().size());
 
-            for (Map.Entry<H, Collection<R>> e : tasksForHost.asMap().entrySet()) {
+            for (Map.Entry<H, Collection<T>> e : tasksForHost.asMap().entrySet()) {
                 H host = e.getKey();
 
                 ThreadFactoryBuilder b = new ThreadFactoryBuilder();
                 b.setNameFormat(host + "-worker-%d");
-                NamedThreadPoolExecutor executor = new NamedThreadPoolExecutor(workersPerHost, workersPerHost, 0L,
+                NamedLatchedThreadPoolExecutor executor = new NamedLatchedThreadPoolExecutor(workersPerHost, workersPerHost, 0L,
                         TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), b.build());
                 executor.setName(host.toString());
                 executor.setLatch(latch);
 
                 ListeningExecutorService les = MoreExecutors.listeningDecorator(executor);
 
-                for (R task : e.getValue()) {
-                    Futures.addCallback(les.submit(task), new FutureCallback<Result>() {
-
-                        @Override
-                        public void onSuccess(Result result) {
-                            log.info("Success: " + result.toString());
-                        }
-
-                        @Override
-                        public void onFailure(Throwable t) {
-                            log.info("Failure: " + t.getMessage());
-                        }
-                    });
+                for (T task : e.getValue()) {
+                    if (callback != null && callBackExecutor != null) {
+                        Futures.addCallback(les.submit(task), callback, callBackExecutor);
+                    } else {
+                        les.submit(task);
+                    }
                 }
                 les.shutdown();
             }
@@ -120,8 +123,8 @@ public class OptimizationProcessor<H extends Comparable<H>, R extends Callable<R
      * 
      * @return SetMultimap<H, T>
      */
-    private SetMultimap<H, R> buildSetMultimap() {
-        SetMultimap<H, R> tasksForHost;
+    private SetMultimap<H, T> buildSetMultimap() {
+        SetMultimap<H, T> tasksForHost;
 
         tasksForHost = HashMultimap.create(hosts.size(),
                 (tasks.size() / workersPerHost) + (tasks.size() % workersPerHost));
