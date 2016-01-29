@@ -85,6 +85,12 @@ public class NamedLatchedThreadPoolExecutor extends ThreadPoolExecutor {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
     }
 
+    @Override
+    protected void beforeExecute(Thread t, Runnable r) {
+        log.debug("About to execute " + r.toString() + " on thread " + t.getName());
+        super.beforeExecute(t, r);
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
@@ -103,5 +109,4 @@ public class NamedLatchedThreadPoolExecutor extends ThreadPoolExecutor {
         log.debug(this.getName() + " has terminated");
         latch.countDown();
     }
-
 }

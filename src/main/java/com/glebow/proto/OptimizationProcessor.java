@@ -70,6 +70,7 @@ public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callabl
         this.pool = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
     }
 
+
     /**
      * Processes the tasks on each of the hosts and returns once the process is
      * complete
@@ -99,7 +100,7 @@ public class OptimizationProcessor<H extends Comparable<H>, R, T extends Callabl
                         workersPerHost, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), b.build());
                 executor.setName(host.toString());
                 executor.setLatch(latch);
-
+                
                 ListeningExecutorService les = MoreExecutors.listeningDecorator(executor);
 
                 for (T task : e.getValue()) {

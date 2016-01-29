@@ -41,6 +41,7 @@ public class ConcurrencyTest {
 
             OptimizationProcessor<String, Result, Task> p = new OptimizationProcessor<>(hosts, workersPerHost, tasks,
                     new Callback(), callBackExecutor);
+            
             Duration d = p.process().get();
             log.info("Duration: " + d);            
         } catch (Exception e) {
